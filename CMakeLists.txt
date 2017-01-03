@@ -12,9 +12,13 @@ find_package(Syslog REQUIRED)
 target_link_libraries(twemproxy_sentinel ${SYSLOG_LIBRARIES})
 include_directories(${SYSLOG_INCLUDE_DIR})
 
-find_package(LibYAML REQUIRED)
 target_link_libraries(twemproxy_sentinel "${twemproxy_sentinel_SOURCE_DIR}/contrib/yaml-0.1.4/src/.libs/libyaml.a")
-include_directories(${LIBYAML_INCLUDE_DIR})
+include_directories("${twemproxy_sentinel_SOURCE_DIR}/contrib/yaml-0.1.4/include/")
 
+target_link_libraries(twemproxy_sentinel "${twemproxy_sentinel_SOURCE_DIR}/contrib/hiredis/libhiredis.a")
+include_directories("${twemproxy_sentinel_SOURCE_DIR}/contrib/hiredis/")
+
+target_link_libraries(twemproxy_sentinel "${twemproxy_sentinel_SOURCE_DIR}/contrib/libevent/.libs/libevent_core.a")
+include_directories("${twemproxy_sentinel_SOURCE_DIR}/contrib/libevent/include/")
 
 install(TARGETS twemproxy_sentinel DESTINATION build)

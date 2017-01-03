@@ -7,6 +7,11 @@
 #include <stdint.h>
 #include <yaml.h>
 
+#include <signal.h>
+#include "hiredis.h"
+#include "async.h"
+#include "adapters/libevent.h"
+
 #include "logging.h"
 
 struct tsConf {
@@ -19,17 +24,17 @@ struct tsConf {
 
 void main(int argc, char **argv) {
 
-  parseyaml();
-
-  return;
+  //parseyaml();
 
   struct tsConf ts_conf = {};
 
   parseConfig(argc, argv, &ts_conf);
 
   int restart_status = 0;
+  
+  updateNcConfigToLatest(&ts_conf);
 
-
+  subscribeToSentinelChannel(&ts_conf);
   //restart_status = execute_service_restart(ts_conf.nc_service_name);
 
   //if(restart_status == 0) {
@@ -74,15 +79,19 @@ void parseConfig(int argc, char **argv, struct tsConf *ts_conf) {
 
   if(ts_conf->nc_host == NULL) {
     fprintf(stderr, "-h (nc_host) flag is required\n");
+    exit(1);
   }
   else if(ts_conf->nc_port == 0) {
     fprintf(stderr, "-p (nc_port) flag is required\n");
+    exit(1);
   }
   else if(ts_conf->nc_conf_file == NULL) {
     fprintf(stderr, "-f (nc_conf_file) flag is required\n");
+    exit(1);
   }
   else if(ts_conf->nc_service_name == NULL) {
     fprintf(stderr, "-c (nc_service_name) flag is required\n");
+    exit(1);
   }
   else {
     sprintf(logging, "ip: %s \nport: %d\ntwemproxy_config_path: %s\ntwemproxy_service_name: %s\nlog_file_location: %s\n", 
@@ -106,6 +115,86 @@ int execute_service_restart(char *service_name) {
   if ((pid > 0) && (waitpid(pid, &status, 0) > 0) && (WIFEXITED(status) && !WEXITSTATUS(status))) {
     return 1;
   }
+
+  return 0;
+}
+
+void onPublishMessage(redisAsyncContext *c, void *reply, void *privdata) {
+  redisReply *r = reply;
+  int j;
+
+  if (reply == NULL) return;
+
+  if (r->type == REDIS_REPLY_ARRAY) {
+    for (j = 0; j < r->elements; j++) {
+      printf("%u) %s\n", j, r->element[j]->str);
+    }
+  }
+}
+
+int updateNcConfigToLatest(struct tsConf *ts_conf) {
+  
+  redisContext *c;
+  redisReply *reply;
+  int j, k;
+ 
+  struct timeval timeout = { 1, 500000 }; // 1.5 seconds
+
+  c = redisConnectWithTimeout(ts_conf->nc_host, ts_conf->nc_port, timeout);
+  if (c == NULL || c->err) {
+    if (c) {
+      printf("Connection error: %s\n", c->errstr);
+      redisFree(c);
+    } else {
+      printf("Connection error: can't allocate redis context\n");
+    }
+    exit(1);
+  }
+
+  char *serverName;
+  char *serverAddr;
+  char *serverIp;
+  char *serverPort;
+  static char *colon = ":";
+
+  reply = redisCommand(c,"SENTINEL %s","masters");
+  printf("PING: %s\n", reply->str);
+  if (reply->type == REDIS_REPLY_ARRAY) {
+    for (j = 0; j < reply->elements; j++) {
+      serverName = reply->element[j]->element[1]->str;
+      serverIp = reply->element[j]->element[3]->str;
+      serverPort = reply->element[j]->element[5]->str;
+      //account for colon, port and null terminator
+      serverAddr = malloc(strlen(serverIp) + (5 * sizeof(char)));
+      strcpy(serverAddr, serverIp);
+      strcat(serverAddr, colon);
+      strcat(serverAddr, serverPort);
+      printf("Server %d, %s - %s\n", j, serverName, serverAddr);
+    }
+  }
+
+  freeReplyObject(reply);
+
+  /* Disconnects and frees the context */
+  redisFree(c);
+
+  return 0;
+}
+
+int subscribeToSentinelChannel(struct tsConf *ts_conf) {
+
+  signal(SIGPIPE, SIG_IGN);
+  struct event_base *base = event_base_new();
+
+  redisAsyncContext *c = redisAsyncConnect(ts_conf->nc_host, ts_conf->nc_port);
+  if (c->err) {
+    printf("error: %s\n", c->errstr);
+    return 1;
+  }
+
+  redisLibeventAttach(c, base);
+  redisAsyncCommand(c, onPublishMessage, NULL, "SUBSCRIBE +switch-master");
+  event_base_dispatch(base);
 
   return 0;
 }
