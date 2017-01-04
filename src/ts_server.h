@@ -2,7 +2,7 @@
 #define _TS_SERVER_H
 
 struct tsServer {
-  char *port;
+  uint16_t port;
   char *host;
   char *name;
 };

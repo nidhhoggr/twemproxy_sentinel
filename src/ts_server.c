@@ -1,17 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
-typedef struct ts_servers {
-  struct ts_server *server;
-  struct ts_servers *next;
-} ts_servers;
-
-typedef struct ts_server {
-  char *port;
-  char *host;
-  char *name;
-} ts_server;
+#include "ts_server.h"
 
 ts_servers* ts_create_servers(ts_server *server) {
   ts_servers* newServers = malloc(sizeof(ts_servers));
@@ -39,8 +31,7 @@ void ts_delete_servers(ts_servers *servers) {
 
 const char * ts_set_server_fqn(ts_server *server) {
   char *server_fqn;
-  server_fqn = malloc(strlen(server->name) + (5 * sizeof(char)));
-  strcpy(server_fqn, server->host);
-  strcat(server_fqn, ":");
-  strcat(server_fqn, server->port);
+  server_fqn = malloc(strlen(server->name) + 2 + (sizeof(uint16_t)));
+  sprintf(server_fqn, "%s:%hu\n", server->host, server->port);
+  return server_fqn;
 }

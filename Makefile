@@ -7,7 +7,7 @@ clean_build:
 clean_contrib:
 	rm -rf contrib/yaml-0.1.4
 	rm -rf contrib/hiredis
-	rm -rf contrib/libevent
+	rm -rf contrib/libevent-2.0.22-stable
 
 build_contrib_libyaml: 
 	cd contrib; tar -xvzf yaml-0.1.4.tar.gz; cd yaml-0.1.4; ./configure; make;
