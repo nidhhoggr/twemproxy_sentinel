@@ -13,8 +13,8 @@ build_contrib_libyaml:
 	cd contrib; tar -xvzf yaml-0.1.4.tar.gz; cd yaml-0.1.4; ./configure; make;
 
 build_contrib_libevent:
-	cd contrib; git clone --branch 2.0.23-stable-rc https://github.com/libevent/libevent.git; \
-	cd libevent; autoreconf --install; ./configure; make;
+	cd contrib; wget https://github.com/libevent/libevent/releases/download/release-2.0.22-stable/libevent-2.0.22-stable.tar.gz;\
+	tar -xvzf libevent-2.0.22-stable.tar.gz; cd libevent-2.0.22-stable; autoreconf --install; ./configure; make;
 
 build_contrib_hiredis: build_contrib_libevent
 	cd contrib; git clone https://github.com/redis/hiredis.git; \

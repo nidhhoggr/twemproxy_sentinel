@@ -18,8 +18,8 @@ include_directories("${twemproxy_sentinel_SOURCE_DIR}/contrib/yaml-0.1.4/include
 target_link_libraries(twemproxy_sentinel "${twemproxy_sentinel_SOURCE_DIR}/contrib/hiredis/libhiredis.a")
 include_directories("${twemproxy_sentinel_SOURCE_DIR}/contrib/hiredis/")
 
-target_link_libraries(twemproxy_sentinel "${twemproxy_sentinel_SOURCE_DIR}/contrib/libevent/.libs/libevent_core.a")
-include_directories("${twemproxy_sentinel_SOURCE_DIR}/contrib/libevent/include/")
+target_link_libraries(twemproxy_sentinel "${twemproxy_sentinel_SOURCE_DIR}/contrib/libevent-2.0.22-stable/.libs/libevent_core.a")
+include_directories("${twemproxy_sentinel_SOURCE_DIR}/contrib/libevent-2.0.22-stable/include/")
 
 install(TARGETS twemproxy_sentinel DESTINATION build)
 

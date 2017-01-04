@@ -1,5 +1,5 @@
 contrib/yaml-0.1.4
 contrib/hiredis
-contrib/libevent
+contrib/libevent**
 sentinelResponse
 build
