@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 #ifndef _TS_SERVER_H
 #define _TS_SERVER_H
 

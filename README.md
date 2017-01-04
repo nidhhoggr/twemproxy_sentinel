@@ -29,5 +29,6 @@ configuration file to use the new redis master IP address.
 
 ###Run
 ```
-./build/twemproxy_sentinel -h [redis-sentinel-host] -p [redis_sentinel_port] -f [nutcracker_config_file] -c [twemproxy_service_name]
+./build/twemproxy_sentinel -h [redis-sentinel-host] -p [redis_sentinel_port] \
+  -f [nutcracker_config_file] -c [twemproxy_service_name]
 ```
