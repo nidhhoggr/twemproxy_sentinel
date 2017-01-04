@@ -12,7 +12,8 @@
 #include "async.h"
 #include "adapters/libevent.h"
 
-#include "logging.h"
+#include "ts_logging.h"
+#include "ts_server.h"
 
 struct tsConf {
   char *nc_host;
@@ -21,6 +22,10 @@ struct tsConf {
   char *nc_service_name;
   char *nc_log_file;
 };
+
+//typedef struct tsConf ts_conf;
+
+void parseConfig(int argc, char **argv, struct tsConf *ts_conf);
 
 void main(int argc, char **argv) {
 
@@ -31,10 +36,16 @@ void main(int argc, char **argv) {
   parseConfig(argc, argv, &ts_conf);
 
   int restart_status = 0;
-  
-  updateNcConfigToLatest(&ts_conf);
+
+  ts_servers servers;
+
+  ts_servers *sPtr = &servers;
+
+  setRedisMasterServers(&ts_conf, sPtr);
 
   subscribeToSentinelChannel(&ts_conf);
+
+  
   //restart_status = execute_service_restart(ts_conf.nc_service_name);
 
   //if(restart_status == 0) {
@@ -97,7 +108,7 @@ void parseConfig(int argc, char **argv, struct tsConf *ts_conf) {
     sprintf(logging, "ip: %s \nport: %d\ntwemproxy_config_path: %s\ntwemproxy_service_name: %s\nlog_file_location: %s\n", 
      ts_conf->nc_host, ts_conf->nc_port, ts_conf->nc_conf_file, ts_conf->nc_service_name, ts_conf->nc_log_file);
     printf("%s\n", logging);
-    log_info(logging);
+    ts_log_info(logging);
   }
 }
 
@@ -132,7 +143,7 @@ void onPublishMessage(redisAsyncContext *c, void *reply, void *privdata) {
   }
 }
 
-int updateNcConfigToLatest(struct tsConf *ts_conf) {
+int setRedisMasterServers(struct tsConf *ts_conf, ts_servers *servers) {
   
   redisContext *c;
   redisReply *reply;
@@ -151,25 +162,18 @@ int updateNcConfigToLatest(struct tsConf *ts_conf) {
     exit(1);
   }
 
-  char *serverName;
-  char *serverAddr;
-  char *serverIp;
-  char *serverPort;
-  static char *colon = ":";
-
   reply = redisCommand(c,"SENTINEL %s","masters");
   printf("PING: %s\n", reply->str);
   if (reply->type == REDIS_REPLY_ARRAY) {
     for (j = 0; j < reply->elements; j++) {
-      serverName = reply->element[j]->element[1]->str;
-      serverIp = reply->element[j]->element[3]->str;
-      serverPort = reply->element[j]->element[5]->str;
-      //account for colon, port and null terminator
-      serverAddr = malloc(strlen(serverIp) + (5 * sizeof(char)));
-      strcpy(serverAddr, serverIp);
-      strcat(serverAddr, colon);
-      strcat(serverAddr, serverPort);
-      printf("Server %d, %s - %s\n", j, serverName, serverAddr);
+      ts_server server;
+      server.name = reply->element[j]->element[1]->str;
+      server.host = reply->element[j]->element[3]->str;
+      server.port = reply->element[j]->element[5]->str;
+      ts_server *sPtr = &server;
+      servers = ts_add_server(servers, sPtr);
+      const char *server_fqn = ts_set_server_fqn(sPtr);
+      printf("%s\n", server_fqn);
     }
   }
 
@@ -196,54 +200,5 @@ int subscribeToSentinelChannel(struct tsConf *ts_conf) {
   redisAsyncCommand(c, onPublishMessage, NULL, "SUBSCRIBE +switch-master");
   event_base_dispatch(base);
 
-  return 0;
-}
-
-int parseyaml(void)
-{
-  FILE *fh = fopen("conf/nutcracker.yml", "r");
-  yaml_parser_t parser;
-  yaml_token_t  token;   /* new variable */
-
-  /* Initialize parser */
-  if(!yaml_parser_initialize(&parser))
-    fputs("Failed to initialize parser!\n", stderr);
-  if(fh == NULL)
-    fputs("Failed to open file!\n", stderr);
-
-  /* Set input file */
-  yaml_parser_set_input_file(&parser, fh);
-
-  /* BEGIN new code */
-  do {
-    yaml_parser_scan(&parser, &token);
-    switch(token.type)
-    {
-    /* Stream start/end */
-    case YAML_STREAM_START_TOKEN: puts("STREAM START"); break;
-    case YAML_STREAM_END_TOKEN:   puts("STREAM END");   break;
-    /* Token types (read before actual token) */
-    case YAML_KEY_TOKEN:   printf("(Key token)   "); break;
-    case YAML_VALUE_TOKEN: printf("(Value token) "); break;
-    /* Block delimeters */
-    case YAML_BLOCK_SEQUENCE_START_TOKEN: puts("<b>Start Block (Sequence)</b>"); break;
-    case YAML_BLOCK_ENTRY_TOKEN:          puts("<b>Start Block (Entry)</b>");    break;
-    case YAML_BLOCK_END_TOKEN:            puts("<b>End block</b>");              break;
-    /* Data */
-    case YAML_BLOCK_MAPPING_START_TOKEN:  puts("[Block mapping]");            break;
-    case YAML_SCALAR_TOKEN:  printf("scalar %s \n", token.data.scalar.value); break;
-    /* Others */
-    default:
-      printf("Got token of type %d\n", token.type);
-    }
-    if(token.type != YAML_STREAM_END_TOKEN)
-      yaml_token_delete(&token);
-  } while(token.type != YAML_STREAM_END_TOKEN);
-  yaml_token_delete(&token);
-  /* END new code */
-
-  /* Cleanup */
-  yaml_parser_delete(&parser);
-  fclose(fh);
   return 0;
 }

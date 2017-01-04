@@ -22,3 +22,12 @@ target_link_libraries(twemproxy_sentinel "${twemproxy_sentinel_SOURCE_DIR}/contr
 include_directories("${twemproxy_sentinel_SOURCE_DIR}/contrib/libevent/include/")
 
 install(TARGETS twemproxy_sentinel DESTINATION build)
+
+
+#testing
+
+#file(GLOB_RECURSE TEST_SOURCES test/*.c test/*.h)
+
+#add_executable (testing ${TEST_SOURCES})
+
+#install(TARGETS testing DESTINATION build)
