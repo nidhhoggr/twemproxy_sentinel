@@ -89,3 +89,34 @@ int ts_sentinel_subscribe(ts_server *server) {
 
   return 0;
 }
+
+ts_master_promotion *ts_master_promotion_init(void) {
+  ts_master_promotion *mProm = calloc(1, sizeof(ts_master_promotion));
+  ts_server *oMaster = calloc(1, sizeof(ts_server));
+  ts_server *nMaster = calloc(1, sizeof(ts_server));
+  mProm->old_master = oMaster;
+  mProm->new_master = nMaster;
+  return mProm;
+}
+
+ts_master_promotion *ts_sentinel_parse_master_promotion(char *master_promotion_msg) {
+  
+  printf ("Splitting string \"%s\" into tokens:\n", master_promotion_msg);
+  ts_master_promotion *master_promotion = ts_master_promotion_init();
+  
+  master_promotion->old_master->name = strtok(master_promotion_msg, " ");
+  master_promotion->old_master->host = strtok(NULL, " ");
+  master_promotion->old_master->port = atoi(strtok(NULL, " "));
+  master_promotion->new_master->host = strtok(NULL, " ");
+  master_promotion->new_master->port = atoi(strtok(NULL, " "));
+  strtok(NULL, " ");
+
+  printf("%s - %s - %hu - %s - %hu", 
+    master_promotion->old_master->name, 
+    master_promotion->old_master->host,
+    master_promotion->old_master->port,
+    master_promotion->new_master->host, 
+    master_promotion->new_master->port);
+
+  return master_promotion;
+}

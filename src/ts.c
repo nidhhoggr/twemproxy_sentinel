@@ -8,7 +8,11 @@
 #include "ts_args.h"
 
 void main(int argc, char **argv) {
+  
+  char host_str[128] = "redis-004 10.132.16.48 6382 10.132.169.170 6382";
 
+  ts_sentinel_parse_master_promotion(host_str);
+  
   ts_args *tsArgs = tc_args_init();
   
   ts_args_parse(argc, argv, tsArgs);
