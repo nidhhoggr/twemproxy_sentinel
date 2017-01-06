@@ -10,52 +10,57 @@
 #include "ts_sentinel.h"
 
 
-redisContext* ts_sentinel_connect(ts_server *server) {
+redisContext* ts_sentinel_connect(ts_server **server) {
   
   struct timeval timeout = { 1, 500000 }; // 1.5 seconds
 
   redisContext *c;
-  c = redisConnectWithTimeout(server->host, server->port, timeout);
+  c = redisConnectWithTimeout((*server)->host, (*server)->port, timeout);
 
   if (c == NULL || c->err) {
-    ts_sentinel_disconnect(c);
+    ts_sentinel_disconnect(&c);
     exit(1);
   }
   
   return c;
 }
 
-void ts_sentinel_disconnect(redisContext *c) {
-  if (c) {
-    printf("Connection error: %s\n", c->errstr);
-    redisFree(c);
-  } else {
-    printf("Connection error: can't allocate redis context\n");
+void ts_sentinel_disconnect(redisContext **c) {
+  if (!(*c)) {
+    printf("Connection error: %s\n", (*c)->errstr);
   }
 }
 
-int ts_sentinel_set_masters(redisContext *c, ts_servers *servers) {
+ts_servers * ts_sentinel_get_masters(redisContext **c) {
   redisReply *reply;
   int j;
 
-  reply = redisCommand(c,"SENTINEL %s","masters");
-  
+  reply = redisCommand((*c),"SENTINEL %s","masters");
+
+  ts_servers *servers = {NULL};
+
   if (reply->type == REDIS_REPLY_ARRAY) {
+
     for (j = 0; j < reply->elements; j++) {
-      ts_server server;
-      server.name = reply->element[j]->element[1]->str;
-      server.host = reply->element[j]->element[3]->str;
-      server.port = atoi(reply->element[j]->element[5]->str);
-      ts_server *sPtr = &server;
-      servers = ts_add_server(servers, sPtr);
-      const char *server_fqn = ts_set_server_fqn(sPtr);
+      ts_server *server = calloc(1, sizeof(ts_server));
+      memcpy(&server->name, &reply->element[j]->element[1]->str, 
+        sizeof(reply->element[j]->element[1]->str));
+      memcpy(&server->host, &reply->element[j]->element[3]->str,
+        sizeof(reply->element[j]->element[3]->str));
+      memcpy(&server->port, &reply->element[j]->element[5]->str, 2);
+      
+      if(servers == NULL) {
+        servers = ts_create_servers(&server);
+      }
+      else {
+        servers = ts_add_server(&servers, &server);
+      }
+      const char *server_fqn = ts_set_server_fqn(&server);
       printf("master (%d): %s\n", j, server_fqn);
     }
   }
-
-  freeReplyObject(reply);
-
-  return 0;
+  //freeReplyObject(reply);
+  return servers;
 }
 
 void ts_sentinel_publish_message(redisAsyncContext *c, void *reply, void *privdata) {
@@ -107,6 +112,7 @@ ts_master_promotion *ts_sentinel_parse_master_promotion(char *master_promotion_m
   master_promotion->old_master->name = strtok(master_promotion_msg, " ");
   master_promotion->old_master->host = strtok(NULL, " ");
   master_promotion->old_master->port = atoi(strtok(NULL, " "));
+  master_promotion->new_master->name = master_promotion->old_master->name;
   master_promotion->new_master->host = strtok(NULL, " ");
   master_promotion->new_master->port = atoi(strtok(NULL, " "));
   strtok(NULL, " ");

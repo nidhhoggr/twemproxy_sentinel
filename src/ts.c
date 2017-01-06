@@ -6,6 +6,8 @@
 #include "ts_server.h"
 #include "ts_sentinel.h"
 #include "ts_args.h"
+#include "ts_nc_config.h"
+
 
 void main(int argc, char **argv) {
   
@@ -15,23 +17,21 @@ void main(int argc, char **argv) {
   
   ts_args *tsArgs = tc_args_init();
   
-  ts_args_parse(argc, argv, tsArgs);
+  ts_args_parse(argc, argv, &tsArgs);
 
   redisContext *redis_ctx;
   
-  redis_ctx = ts_sentinel_connect(tsArgs->server);
+  redis_ctx = ts_sentinel_connect(&tsArgs->server);
 
-  ts_servers servers;
+  ts_servers *servers = ts_sentinel_get_masters(&redis_ctx);
+ 
+  ts_nc_config_update(&tsArgs, &servers);
 
-  ts_servers *sPtr = &servers;
+  ts_sentinel_disconnect(&redis_ctx);
 
-  ts_sentinel_set_masters(redis_ctx, sPtr);
-  
-  ts_sentinel_disconnect(redis_ctx);
+  //ts_sentinel_subscribe(tsArgs->server);
 
-  ts_sentinel_subscribe(tsArgs->server);
-
-  ts_args_free(tsArgs);
+  ts_args_free(&tsArgs);
 }
 
 int execute_service_restart(char *service_name) {
