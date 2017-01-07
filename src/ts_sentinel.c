@@ -43,12 +43,19 @@ ts_servers * ts_sentinel_get_masters(redisContext **c) {
 
     for (j = 0; j < reply->elements; j++) {
       ts_server *server = calloc(1, sizeof(ts_server));
+      
+      /*
       memcpy(&server->name, &reply->element[j]->element[1]->str, 
         sizeof(reply->element[j]->element[1]->str));
       memcpy(&server->host, &reply->element[j]->element[3]->str,
         sizeof(reply->element[j]->element[3]->str));
       memcpy(&server->port, &reply->element[j]->element[5]->str, 2);
-      
+      */
+
+      server->name = reply->element[j]->element[1]->str;
+      server->host = reply->element[j]->element[3]->str;
+      server->port = atoi(reply->element[j]->element[5]->str);
+
       if(servers == NULL) {
         servers = ts_create_servers(&server);
       }

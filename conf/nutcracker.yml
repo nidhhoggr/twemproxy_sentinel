@@ -1,4 +1,4 @@
-alpha: 
+alpha:
   listen: "0.0.0.0:22122"
   hash: fnv1a_64
   hash_tag: "{}"
@@ -10,12 +10,12 @@ alpha:
   redis: true
   preconnect: true
   redis_auth: testpassword
-  servers: 
-    - "10.132.16.48:6380:1 redis-002"
-    - "10.132.16.48:6381:1 redis-003"
-    - "10.132.16.48:6382:1 redis-004"
-    - "10.132.16.48:6383:1 redis-005"
-georedis: 
+  servers:
+  - "10.132.16.48:6380:1 redis-002"
+  - "10.132.16.48:6381:1 redis-003"
+  - "10.132.169.170:6382:1 redis-004"
+  - "10.132.16.48:6383:1 redis-005"
+georedis:
   listen: "0.0.0.0:22123"
   hash: fnv1a_64
   distribution: ketama
@@ -26,5 +26,5 @@ georedis:
   redis: true
   preconnect: true
   redis_auth: testpassword
-  servers: 
-    - "10.132.16.48:6379:1 redis-001"
+  servers:
+  - "10.132.16.48:6379:1 redis-001"

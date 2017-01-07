@@ -11,8 +11,6 @@
 ts_nc_config_parser_events * ts_nc_config_parser_events_init(yaml_event_t *event) {
   ts_nc_config_parser_events *newEvents = malloc(sizeof(ts_nc_config_parser_events));
   if(NULL != newEvents) {
-    newEvents->event = malloc(sizeof(yaml_event_t));
-    printf("initialized with event type: %d", event->type);
     newEvents->event = event;
     newEvents->next = NULL;
   }
@@ -39,6 +37,7 @@ void ts_nc_config_parser_events_free(ts_nc_config_parser_events **events) {
 }
 
 void ts_nc_config_parser_events_reverse(ts_nc_config_parser_events **head_ref) {
+  
   ts_nc_config_parser_events *first;
   ts_nc_config_parser_events *rest;
 
@@ -46,7 +45,6 @@ void ts_nc_config_parser_events_reverse(ts_nc_config_parser_events **head_ref) {
   if (*head_ref == NULL)
     return;   
 
-  /* suppose first = {1, 2, 3}, rest = {2, 3} */
   first = *head_ref;  
   rest  = first->next;
 
@@ -54,14 +52,12 @@ void ts_nc_config_parser_events_reverse(ts_nc_config_parser_events **head_ref) {
   if (rest == NULL)
     return;   
 
-  /* reverse the rest list and put the first element at the end */
   ts_nc_config_parser_events_reverse(&rest);
+  
   first->next->next  = first;  
 
-  /* tricky step -- see the diagram */
   first->next  = NULL;          
 
-  /* fix the head pointer */
   *head_ref = rest;
 }
 
@@ -71,25 +67,23 @@ int ts_nc_config_update(ts_args **tsArgs, ts_servers **servers)
 
   ts_nc_config_parser_events_reverse(&events); 
 
-  /*
-  while(events != NULL) {
-    printf("%d\n", events->event->type);
-    
-    if(events->next && events->next->event) {
-      events = events->next;
-    }
-    else {
-      events = NULL;
-    }
-  }
-  */
-
-  ts_nc_config_emit(&events);
+  ts_nc_config_emit(tsArgs, &events);
 
   ts_nc_config_parser_events_free(&events);
 }
 
 ts_nc_config_parser_events * ts_nc_config_parse(ts_args **tsArgs, ts_servers **servers) {
+  
+  FILE *ifp;
+
+  ifp = fopen((*tsArgs)->nc_conf_file, "r");
+
+  if (ifp == NULL) {
+    fprintf(stderr, "Can't open input file\n");
+    exit(1);
+  }
+
+
   int done = 0;
 
   yaml_parser_t parser;
@@ -107,35 +101,24 @@ ts_nc_config_parser_events * ts_nc_config_parse(ts_args **tsArgs, ts_servers **s
   }
   /* Set the parser parameters. */
 
-  FILE *ifp;
-
-  ifp = fopen((*tsArgs)->nc_conf_file, "r");
-
-  if (ifp == NULL) {
-    fprintf(stderr, "Can't open input file\n");
-    exit(1);
-  }
 
   yaml_parser_set_input_file(&parser, ifp);
 
   int beginServerNodes = 0;
 
-  ts_servers *serverIt = calloc(10, sizeof(ts_server));
+  ts_servers *serverIt = malloc(sizeof(ts_servers));
   
-  /* The main loop. */
-
   int parsedFirst = 0;
+
+  char *event_server_uri; 
+  ts_server *event_server = malloc(sizeof(ts_server));
 
   while (!done)
   {
     yaml_event_t *event = malloc(sizeof(yaml_event_t));
-    /* Get the next token. */
     
     if (yaml_parser_parse(&parser, event)) {
       if(!parsedFirst) {
-        printf("events are null");
-        if (event->type == YAML_STREAM_START_EVENT)
-          printf("+STR\n");
         events = ts_nc_config_parser_events_init(event);
         parsedFirst = 1;
       }
@@ -145,13 +128,13 @@ ts_nc_config_parser_events * ts_nc_config_parse(ts_args **tsArgs, ts_servers **s
     }
     else {
       handle_parser_error(&parser);
+      ts_nc_config_parser_events_free(&events);
+      free(event_server);
+      free(serverIt);
+      exit(0);
     }
 
-    printf(" -- \n");
-
-    /* Check if this is the stream end. */
-
-    if(beginServerNodes && event->type == 8) {
+    if(beginServerNodes && event->type == YAML_BLOCK_MAPPING_START_TOKEN) {
       beginServerNodes = 0;
     }
 
@@ -159,30 +142,73 @@ ts_nc_config_parser_events * ts_nc_config_parse(ts_args **tsArgs, ts_servers **s
 
       if(beginServerNodes == 1) {
 
+        event_server_uri = strtok(event->data.scalar.value," ");
+        event_server->name = strtok(NULL, " ");
+        event_server->host = strtok(event_server_uri, ":");
+        event_server->port = atoi(strtok(NULL, ":"));
+
         serverIt = (*servers);
         while(serverIt != NULL) {
-          printf("nextServer: %s\n", serverIt->server->host);
+         
+          //names match so lets check URI
+          if(strcmp(serverIt->server->name, event_server->name) == 0) {
+            printf("MATCH: master name: %s, config name: %s\n", 
+             serverIt->server->name,
+             event_server->name);
+             
+            char promotedServer[36];
+            
+            //has matching URI?
+            if(strcmp(serverIt->server->host, event_server->host) != 0 ||
+              serverIt->server->port != event_server->port) {
+              printf("DOESNT MATCH: master uri: %s:%hu,  config uri %s:%hu\n",
+                serverIt->server->host,
+                serverIt->server->port,
+                event_server->host,
+                event_server->port);
+
+              sprintf(promotedServer, "%s:%hu:1 %s",
+                serverIt->server->host,
+                serverIt->server->port,
+                serverIt->server->name
+              );
+            
+              printf("promoting master to %s\n", promotedServer);
+
+              event->data.scalar.value = (yaml_char_t*)strdup(promotedServer); 
+              event->data.scalar.length = strlen(promotedServer);
+            }
+            else {
+              sprintf(promotedServer, "%s:%hu:1 %s",
+                  serverIt->server->host,
+                  serverIt->server->port,
+                  serverIt->server->name
+                  );
+
+              event->data.scalar.value = (yaml_char_t*)strdup(promotedServer); 
+              event->data.scalar.length = strlen(promotedServer);
+            }
+          }
+
           if(serverIt->server->host != NULL) {
             serverIt = serverIt->next;
           }
         }
 
-        printf("%s\n", event->data.scalar.value);
-        //const char* newHost = "10.132.16.48:6379:1 redis-001";
-        //event.data.scalar.value = (yaml_char_t*)strdup(newHost); 
-        //event.data.scalar.length = strlen(newHost);
       }
       if(strcmp("servers",event->data.scalar.value) == 0) {
         beginServerNodes = 1;
       }
     }
-
-    if (event->type == YAML_STREAM_END_EVENT) {
+    else if (event->type == YAML_STREAM_END_EVENT) {
       done = 1;
     } 
   }
 
   yaml_parser_delete(&parser);
+
+  free(event_server);
+  free(serverIt);
 
   return events;
 }
@@ -245,9 +271,20 @@ void handle_parser_error(yaml_parser_t *parser) {
   yaml_parser_delete(parser);
 }
 
-int ts_nc_config_emit(ts_nc_config_parser_events **events) {
+int ts_nc_config_emit(ts_args **tsArgs, ts_nc_config_parser_events **events) {
+
+  FILE *ofp;
+
+  ofp = fopen((*tsArgs)->nc_conf_file, "w");
+
+  if (ofp == NULL) {
+    fprintf(stderr, "Can't open output file\n");
+    exit(1);
+  }
+
 
   yaml_emitter_t emitter;
+
   memset(&emitter, 0, sizeof(emitter));
 
   if (!yaml_emitter_initialize(&emitter)){
@@ -255,28 +292,9 @@ int ts_nc_config_emit(ts_nc_config_parser_events **events) {
     return 1;
   }
 
-  /* Set the parser parameters. */
-
-  FILE *ofp;
-
-  ofp = fopen("conf/output.yml"/*tsArgs->nc_conf_file*/, "w");
-
-  if (ofp == NULL) {
-    fprintf(stderr, "Can't open output file\n");
-    exit(1);
-  }
-
   yaml_emitter_set_output_file(&emitter, ofp);
 
   while((*events) != NULL) {
-
-    if ((*events)->event->type == YAML_SCALAR_EVENT) {
-
-        printf("emitter scalar output: %s\n", (*events)->event->data.scalar.value);
-        //const char* newHost = "10.132.16.48:6379:1 redis-001";
-        //event.data.scalar.value = (yaml_char_t*)strdup(newHost); 
-        //event.data.scalar.length = strlen(newHost);
-    }
 
     if (!yaml_emitter_emit(&emitter, (*events)->event)) {
       handle_emitter_error(&emitter);
