@@ -3,3 +3,4 @@ contrib/hiredis
 contrib/libevent**
 sentinelResponse
 build
+conf/*

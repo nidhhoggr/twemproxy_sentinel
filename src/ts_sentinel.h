@@ -14,11 +14,11 @@ struct ts_master_promotion_struct {
 typedef struct  ts_master_promotion_struct ts_master_promotion;
 
 redisContext* ts_sentinel_connect(ts_server **server);
-void ts_sentinel_disconnect(redisContext **c);
 ts_servers* ts_sentinel_get_masters(redisContext **c);
 void ts_sentinel_publish_message(redisAsyncContext *c, void *reply, void *privdata);
 int ts_sentinel_subscribe(ts_args **tsArgs);
 ts_master_promotion *ts_master_promotion_init(void);
+void ts_master_promotion_free(ts_master_promotion **mProm);
 ts_master_promotion *ts_sentinel_parse_master_promotion(char *master_promotion_msg);
 
 #endif
