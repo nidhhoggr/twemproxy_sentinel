@@ -84,19 +84,22 @@ void ts_sentinel_publish_message(redisAsyncContext *c, void *reply, void *privda
 }
 
 
-int ts_sentinel_subscribe(ts_server *server) {
+int ts_sentinel_subscribe(ts_args **tsArgs) {
 
   signal(SIGPIPE, SIG_IGN);
   struct event_base *base = event_base_new();
 
-  redisAsyncContext *c = redisAsyncConnect(server->host, server->port);
+  redisAsyncContext *c = redisAsyncConnect((*tsArgs)->server->host, (*tsArgs)->server->port);
   if (c->err) {
     printf("error: %s\n", c->errstr);
     return 1;
   }
 
   redisLibeventAttach(c, base);
-  redisAsyncCommand(c, ts_sentinel_publish_message, NULL, "SUBSCRIBE +switch-master");
+  char subscribeCmd[72];
+  sprintf(subscribeCmd,"SUBSCRIBE %s", (*tsArgs)->nc_channel_name);
+  printf("twemproxy sentinel listenting to sentinel on channel: %s\n", subscribeCmd);
+  redisAsyncCommand(c, ts_sentinel_publish_message, NULL, subscribeCmd);
   event_base_dispatch(base);
 
   return 0;

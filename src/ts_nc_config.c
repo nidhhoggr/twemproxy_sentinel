@@ -206,9 +206,9 @@ ts_nc_config_parser_events * ts_nc_config_parse(ts_args **tsArgs, ts_servers **s
   }
 
   yaml_parser_delete(&parser);
-
   free(event_server);
   free(serverIt);
+  fclose(ifp);
 
   return events;
 }
@@ -306,6 +306,7 @@ int ts_nc_config_emit(ts_args **tsArgs, ts_nc_config_parser_events **events) {
   }
 
   yaml_emitter_delete(&emitter);
+  fclose(ofp);
 
   return 0;
 }

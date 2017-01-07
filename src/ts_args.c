@@ -10,6 +10,7 @@ ts_args* tc_args_init(void) {
   ts_args *tc = calloc(1, sizeof(ts_args));
   ts_server *ts = calloc(1, sizeof(ts_server));
   tc->server = ts;
+  tc->nc_channel_name = "+switch-master";
   return tc;
 }
 
@@ -20,14 +21,12 @@ void ts_args_free(ts_args **config) {
 
 void ts_args_parse(int argc, char **argv, ts_args **ts_args) {
 
-  char logging[200];
-
   int index;
   int c;
 
   opterr = 0;
   
-  while ((c = getopt (argc, argv, "h:p:f:c:l:")) != -1) {
+  while ((c = getopt (argc, argv, "h:p:f:c:l:n:")) != -1) {
     switch (c)
     {
       case 'h':
@@ -44,6 +43,9 @@ void ts_args_parse(int argc, char **argv, ts_args **ts_args) {
         break;
       case 'l':
         (*ts_args)->nc_log_file = optarg;
+        break;
+      case 'n':
+        (*ts_args)->nc_channel_name = optarg;
         break;
       case '?':
         fprintf (stderr, "Unknown option character `\\x%x'.\n", optopt);
@@ -70,9 +72,14 @@ void ts_args_parse(int argc, char **argv, ts_args **ts_args) {
     exit(1);
   }
   else {
-    sprintf(logging, "ip: %s \nport: %d\ntwemproxy_config_path: %s\ntwemproxy_service_name: %s\nlog_file_location: %s\n", 
-     (*ts_args)->server->host, (*ts_args)->server->port, (*ts_args)->nc_conf_file, (*ts_args)->nc_service_name, (*ts_args)->nc_log_file);
-    printf("%s\n", logging);
-    ts_log_info(logging);
+    printf("TS ARGS: \n - ip: %s \n - port: %d\n - twemproxy_config_path: %s\n - twemproxy_service_name: %s\
+     \n - log_file_location: %s\n - sentinel channel name: %s\n", 
+     (*ts_args)->server->host, 
+     (*ts_args)->server->port, 
+     (*ts_args)->nc_conf_file, 
+     (*ts_args)->nc_service_name,
+     (*ts_args)->nc_log_file,
+     (*ts_args)->nc_channel_name
+    );
   }
 }

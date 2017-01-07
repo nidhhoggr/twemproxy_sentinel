@@ -6,6 +6,7 @@ struct tsArgs {
   char *nc_conf_file;
   char *nc_service_name;
   char *nc_log_file;
+  char *nc_channel_name;
 };
 
 typedef struct tsArgs ts_args;
