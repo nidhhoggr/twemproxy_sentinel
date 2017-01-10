@@ -207,7 +207,7 @@ ts_nc_config_parser_events * ts_nc_config_parse(ts_args **tsArgs, ts_servers **s
 
   yaml_parser_delete(&parser);
   free(event_server);
-  free(serverIt);
+  ts_delete_servers(&serverIt);
   fclose(ifp);
 
   return events;
@@ -282,7 +282,6 @@ int ts_nc_config_emit(ts_args **tsArgs, ts_nc_config_parser_events **events) {
     exit(1);
   }
 
-
   yaml_emitter_t emitter;
 
   memset(&emitter, 0, sizeof(emitter));
@@ -300,12 +299,12 @@ int ts_nc_config_emit(ts_args **tsArgs, ts_nc_config_parser_events **events) {
       handle_emitter_error(&emitter);
       return 1;
     }
-    yaml_event_delete((*events)->event);
-    if((*events)) {
-      (*events) = (*events)->next;
-    }
+   
+    free((*events)->event);
+    (*events) = (*events)->next;
   }
 
+  
   yaml_emitter_delete(&emitter);
   fclose(ofp);
 
