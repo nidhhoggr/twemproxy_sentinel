@@ -87,7 +87,7 @@ void ts_sentinel_publish_message(redisAsyncContext *c, void *reply, void *privda
     }
   }
 
-  ts_args_free(&tsArgs);
+  free(tsArgs);
 }
 
 int ts_sentinel_subscribe(ts_args **tsArgs) {

@@ -25,14 +25,9 @@ void main(int argc, char **argv) {
   
   ts_nc_config_update(&tsArgs, &servers);
 
-  //ts_delete_servers(&servers);
-
   ts_nc_service_restart(tsArgs->nc_service_name);
 
   ts_sentinel_subscribe(&tsArgs);
- 
-  //catch SIGINT and free remaining memory
-  ts_args_free(&tsArgs);
 }
 
 void ts_nc_update_masters_and_restart(ts_args **tsArgs) {
@@ -43,8 +38,6 @@ void ts_nc_update_masters_and_restart(ts_args **tsArgs) {
   
   ts_nc_config_update(tsArgs, &servers);
   
-  //ts_delete_servers(&servers);
-
   ts_nc_service_restart((*tsArgs)->nc_service_name);
 }
 
