@@ -56,8 +56,7 @@ ts_servers * ts_sentinel_get_masters(redisContext **c) {
       else {
         servers = ts_add_server(&servers, &server);
       }
-      const char *server_fqn = ts_set_server_fqn(&server);
-      printf("master (%d): %s\n", j, server_fqn);
+      printf("master (%d): %s:%hu\n", j, server->host, server->port);
     }
   }
   //freeReplyObject(reply);
@@ -69,11 +68,11 @@ void ts_sentinel_publish_message(redisAsyncContext *c, void *reply, void *privda
   redisReply *r = reply;
   int j;
 
+  if (reply == NULL) { return; }
+  
   ts_args *tsArgs = malloc(sizeof(ts_args));
   
   tsArgs = (ts_args *)privdata;
-
-  if (reply == NULL) return;
 
   if (r->type == REDIS_REPLY_ARRAY) {
 
@@ -88,7 +87,7 @@ void ts_sentinel_publish_message(redisAsyncContext *c, void *reply, void *privda
     }
   }
 
-  free(tsArgs);
+  ts_args_free(&tsArgs);
 }
 
 int ts_sentinel_subscribe(ts_args **tsArgs) {

@@ -23,15 +23,11 @@ ts_servers* ts_add_server(ts_servers **servers, ts_server **server) {
 }
 
 void ts_delete_servers(ts_servers **servers) {
-  if (NULL != (*servers)->next) {
+  if(NULL == (*servers)) {
+    return;
+  }
+  else if (NULL != (*servers)->next) {
     ts_delete_servers(servers);
   }
   free(servers);
-}
-
-const char * ts_set_server_fqn(ts_server **server) {
-  char *server_fqn;
-  server_fqn = malloc(strlen((*server)->name) + 2 + (sizeof(uint16_t)));
-  sprintf(server_fqn, "%s:%hu\n", (*server)->host, (*server)->port);
-  return server_fqn;
 }

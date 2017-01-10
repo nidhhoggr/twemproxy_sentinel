@@ -6,12 +6,12 @@
 #include "ts_server.h"
 #include "ts_args.h"
 
-ts_args* tc_args_init(void) {
-  ts_args *tc = calloc(1, sizeof(ts_args));
-  ts_server *ts = calloc(1, sizeof(ts_server));
-  tc->server = ts;
-  tc->nc_channel_name = "+switch-master";
-  return tc;
+ts_args* ts_args_init(void) {
+  ts_args *tsArgs = calloc(1, sizeof(ts_args));
+  ts_server *tsServer = calloc(1, sizeof(ts_server));
+  tsArgs->server = tsServer;
+  tsArgs->nc_channel_name = "+switch-master";
+  return tsArgs;
 }
 
 void ts_args_free(ts_args **config) { 

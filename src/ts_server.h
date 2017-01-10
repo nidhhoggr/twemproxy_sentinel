@@ -21,6 +21,5 @@ typedef struct ts_servers_struct ts_servers;
 ts_servers* ts_create_servers(ts_server **ts_server);
 ts_servers* ts_add_server(ts_servers **ts_servers, ts_server **ts_server);
 void ts_delete_servers(ts_servers **ts_servers);
-const char * ts_set_server_fqn(ts_server **server);
 
 #endif

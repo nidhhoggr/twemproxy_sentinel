@@ -11,7 +11,7 @@ struct tsArgs {
 
 typedef struct tsArgs ts_args;
 
-ts_args* tc_args_init(void);
+ts_args* ts_args_init(void);
 void ts_args_free(ts_args **config);
 void ts_args_parse(int argc, char **argv, ts_args **ts_args);
 

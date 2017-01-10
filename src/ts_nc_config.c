@@ -300,6 +300,7 @@ int ts_nc_config_emit(ts_args **tsArgs, ts_nc_config_parser_events **events) {
       handle_emitter_error(&emitter);
       return 1;
     }
+    yaml_event_delete((*events)->event);
     if((*events)) {
       (*events) = (*events)->next;
     }
