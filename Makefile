@@ -1,4 +1,4 @@
-all: build_wo_contrib
+all: build
 
 clean_build:
 	rm -rf build
