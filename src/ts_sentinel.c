@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <syslog.h>
 #include "hiredis.h"
 #include "async.h"
 #include "adapters/libevent.h"
@@ -56,7 +57,7 @@ ts_servers * ts_sentinel_get_masters(redisContext **c) {
       else {
         servers = ts_add_server(&servers, &server);
       }
-      printf("master (%d): %s:%hu\n", j, server->host, server->port);
+      syslog(LOG_INFO, "master (%d): %s:%hu\n", j, server->host, server->port);
     }
   }
   //freeReplyObject(reply);
@@ -77,7 +78,7 @@ void ts_sentinel_publish_message(redisAsyncContext *c, void *reply, void *privda
   if (r->type == REDIS_REPLY_ARRAY) {
 
     for (j = 0; j < r->elements; j++) {
-      printf("%u) %s\n", j, r->element[j]->str);
+      syslog(LOG_INFO, "%u) %s\n", j, r->element[j]->str);
     }
 
     if (r->elements > 2 && !strcmp(r->element[0]->str, "message") 
@@ -86,8 +87,6 @@ void ts_sentinel_publish_message(redisAsyncContext *c, void *reply, void *privda
       ts_nc_update_masters_and_restart(&tsArgs);
     }
   }
-
-  free(tsArgs);
 }
 
 int ts_sentinel_subscribe(ts_args **tsArgs) {
@@ -97,7 +96,7 @@ int ts_sentinel_subscribe(ts_args **tsArgs) {
 
   redisAsyncContext *c = redisAsyncConnect((*tsArgs)->server->host, (*tsArgs)->server->port);
   if (c->err) {
-    printf("error: %s\n", c->errstr);
+    syslog(LOG_CRIT, "error: %s\n", c->errstr);
     return 1;
   }
 
@@ -105,7 +104,7 @@ int ts_sentinel_subscribe(ts_args **tsArgs) {
   char subscribeCmd[72];
   sprintf(subscribeCmd,"SUBSCRIBE %s", (*tsArgs)->nc_channel_name);
   redisAsyncCommand(c, ts_sentinel_publish_message, (*tsArgs), subscribeCmd);
-  printf("twemproxy sentinel listenting to sentinel on channel: %s\n", subscribeCmd);
+  syslog(LOG_INFO, "twemproxy sentinel listenting to sentinel on channel: %s\n", subscribeCmd);
   event_base_dispatch(base);
 
   return 0;
@@ -137,7 +136,7 @@ ts_master_promotion *ts_sentinel_parse_master_promotion(char *master_promotion_m
   master_promotion->new_master->port = atoi(strtok(NULL, " "));
   strtok(NULL, " ");
 
-  printf("Old Master: %s:%hu:1 %s\nNew Master: %s:%hu:1 %s\n", 
+  syslog(LOG_NOTICE, "Old Master: %s:%hu:1 %s\nNew Master: %s:%hu:1 %s\n", 
     master_promotion->old_master->host,
     master_promotion->old_master->port,
     master_promotion->old_master->name, 

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <yaml.h>
+#include <syslog.h>
 
 #include "ts_server.h"
 #include "ts_sentinel.h"
@@ -79,7 +80,7 @@ ts_nc_config_parser_events * ts_nc_config_parse(ts_args **tsArgs, ts_servers **s
   ifp = fopen((*tsArgs)->nc_conf_file, "r");
 
   if (ifp == NULL) {
-    fprintf(stderr, "Can't open input file\n");
+    syslog(LOG_CRIT, "Can't open input file\n");
     exit(1);
   }
 
@@ -152,7 +153,7 @@ ts_nc_config_parser_events * ts_nc_config_parse(ts_args **tsArgs, ts_servers **s
          
           //names match so lets check URI
           if(strcmp(serverIt->server->name, event_server->name) == 0) {
-            printf("MATCH: master name: %s, config name: %s\n", 
+            syslog(LOG_INFO, "MATCH: master name: %s, config name: %s\n", 
              serverIt->server->name,
              event_server->name);
              
@@ -161,7 +162,7 @@ ts_nc_config_parser_events * ts_nc_config_parse(ts_args **tsArgs, ts_servers **s
             //has matching URI?
             if(strcmp(serverIt->server->host, event_server->host) != 0 ||
               serverIt->server->port != event_server->port) {
-              printf("DOESNT MATCH: master uri: %s:%hu,  config uri %s:%hu\n",
+              syslog(LOG_NOTICE, "DOESNT MATCH: master uri: %s:%hu,  config uri %s:%hu\n",
                 serverIt->server->host,
                 serverIt->server->port,
                 event_server->host,
@@ -173,7 +174,7 @@ ts_nc_config_parser_events * ts_nc_config_parse(ts_args **tsArgs, ts_servers **s
                 serverIt->server->name
               );
             
-              printf("promoting master to %s\n", promotedServer);
+              syslog(LOG_NOTICE, "promoting master to %s\n", promotedServer);
 
               event->data.scalar.value = (yaml_char_t*)strdup(promotedServer); 
               event->data.scalar.length = strlen(promotedServer);
@@ -218,30 +219,30 @@ void handle_parser_error(yaml_parser_t *parser) {
   switch (parser->error)
   {
     case YAML_MEMORY_ERROR:
-      fprintf(stderr, "Memory error: Not enough memory for parsing\n");
+      syslog(LOG_CRIT, "Memory error: Not enough memory for parsing\n");
       break;
 
     case YAML_READER_ERROR:
       if (parser->problem_value != -1) {
-        fprintf(stderr, "Reader error: %s: #%X at %d\n", parser->problem,
+        syslog(LOG_CRIT, "Reader error: %s: #%X at %d\n", parser->problem,
             parser->problem_value, parser->problem_offset);
       }
       else {
-        fprintf(stderr, "Reader error: %s at %d\n", parser->problem,
+        syslog(LOG_CRIT, "Reader error: %s at %d\n", parser->problem,
             parser->problem_offset);
       }
       break;
 
     case YAML_SCANNER_ERROR:
       if (parser->context) {
-        fprintf(stderr, "Scanner error: %s at line %d, column %d\n"
+        syslog(LOG_CRIT, "Scanner error: %s at line %d, column %d\n"
             "%s at line %d, column %d\n", parser->context,
             parser->context_mark.line+1, parser->context_mark.column+1,
             parser->problem, parser->problem_mark.line+1,
             parser->problem_mark.column+1);
       }
       else {
-        fprintf(stderr, "Scanner error: %s at line %d, column %d\n",
+        syslog(LOG_CRIT, "Scanner error: %s at line %d, column %d\n",
             parser->problem, parser->problem_mark.line+1,
             parser->problem_mark.column+1);
       }
@@ -249,14 +250,14 @@ void handle_parser_error(yaml_parser_t *parser) {
 
     case YAML_PARSER_ERROR:
       if (parser->context) {
-        fprintf(stderr, "Parser error: %s at line %d, column %d\n"
+        syslog(LOG_CRIT, "Parser error: %s at line %d, column %d\n"
             "%s at line %d, column %d\n", parser->context,
             parser->context_mark.line+1, parser->context_mark.column+1,
             parser->problem, parser->problem_mark.line+1,
             parser->problem_mark.column+1);
       }
       else {
-        fprintf(stderr, "Parser error: %s at line %d, column %d\n",
+        syslog(LOG_CRIT, "Parser error: %s at line %d, column %d\n",
             parser->problem, parser->problem_mark.line+1,
             parser->problem_mark.column+1);
       }
@@ -264,7 +265,7 @@ void handle_parser_error(yaml_parser_t *parser) {
 
     default:
       /* Couldn't happen. */
-      fprintf(stderr, "Internal error\n");
+      syslog(LOG_CRIT, "Internal error\n");
       break;
   }
 
@@ -278,7 +279,7 @@ int ts_nc_config_emit(ts_args **tsArgs, ts_nc_config_parser_events **events) {
   ofp = fopen((*tsArgs)->nc_conf_file, "w");
 
   if (ofp == NULL) {
-    fprintf(stderr, "Can't open output file\n");
+    syslog(LOG_CRIT, "Can't open output file\n");
     exit(1);
   }
 
@@ -317,20 +318,20 @@ void handle_emitter_error(yaml_emitter_t *emitter) {
   switch (emitter->error)
   {
     case YAML_MEMORY_ERROR:
-      fprintf(stderr, "Memory error: Not enough memory for emitting\n");
+      syslog(LOG_CRIT, "Memory error: Not enough memory for emitting\n");
       break;
 
     case YAML_WRITER_ERROR:
-      fprintf(stderr, "Writer error: %s\n", emitter->problem);
+      syslog(LOG_CRIT, "Writer error: %s\n", emitter->problem);
       break;
 
     case YAML_EMITTER_ERROR:
-      fprintf(stderr, "Emitter error: %s\n", emitter->problem);
+      syslog(LOG_CRIT, "Emitter error: %s\n", emitter->problem);
       break;
 
     default:
       /* Couldn't happen. */
-      fprintf(stderr, "Internal error\n");
+      syslog(LOG_CRIT, "Internal error\n");
       break;
   }
 

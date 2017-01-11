@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <syslog.h>
 
-#include "ts_logging.h"
 #include "ts_server.h"
 #include "ts_args.h"
 
@@ -11,6 +11,7 @@ ts_args* ts_args_init(void) {
   ts_server *tsServer = calloc(1, sizeof(ts_server));
   tsArgs->server = tsServer;
   tsArgs->nc_channel_name = "+switch-master";
+  tsArgs->nc_log_file = "twemproxy-sentinel";
   return tsArgs;
 }
 
@@ -72,7 +73,7 @@ void ts_args_parse(int argc, char **argv, ts_args **ts_args) {
     exit(1);
   }
   else {
-    printf("TS ARGS: \n - ip: %s \n - port: %d\n - twemproxy_config_path: %s\n - twemproxy_service_name: %s\
+    syslog(LOG_INFO, "TS ARGS: \n - ip: %s \n - port: %d\n - twemproxy_config_path: %s\n - twemproxy_service_name: %s\
      \n - log_file_location: %s\n - sentinel channel name: %s\n", 
      (*ts_args)->server->host, 
      (*ts_args)->server->port, 

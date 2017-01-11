@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <syslog.h>
 
-#include "ts_logging.h"
 #include "ts_server.h"
 #include "ts_sentinel.h"
 #include "ts_args.h"
@@ -14,10 +14,12 @@ static int ts_nc_service_restart(char *service_name);
 static redisContext *redis_ctx;
 
 void main(int argc, char **argv) {
-  
+
   ts_args *tsArgs = ts_args_init();
   
   ts_args_parse(argc, argv, &tsArgs);
+  
+  openlog(tsArgs->nc_log_file, LOG_CONS | LOG_PID | LOG_NDELAY, 0);
 
   redis_ctx = ts_sentinel_connect(&tsArgs->server);
 
@@ -49,12 +51,15 @@ static int ts_nc_service_restart(char *service_name) {
     /* the child process */
     execlp("service", "service", service_name, "restart", NULL);
     /* if execl() was successful, this won't be reached */
-    _exit(0);
+    syslog(LOG_CRIT, "Cannot Retart Twemproxy\n");
+    _exit(1);
   }
   if ((pid > 0) && (waitpid(pid, &status, 0) > 0)) {
     if (WIFEXITED(status) && !WEXITSTATUS(status)) {
-      return 1;
+      syslog(LOG_NOTICE, "Retarted Twemproxy\n");
+      return 0;
     }
   }
-  return 0;
+  syslog(LOG_CRIT, "Cannot Retart Twemproxy\n");
+  return 1;
 }
