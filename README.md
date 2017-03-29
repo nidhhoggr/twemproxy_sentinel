@@ -6,35 +6,35 @@
                        |_|               |__/                                 
 ```
 
-#Twemproxy Sentinel
+# Twemproxy Sentinel
 
-###Author: Joseph Persie
+### Author: Joseph Persie
 
 ---
 
-###Purpose
+### Purpose
 
-The purpose of this library is to be ran as a linux daemon to monitor a redis sentinel. The daemon will
+The purpose of this program is to be ran as a linux daemon to monitor a redis sentinel. The daemon will
 subscribe to the sentinel and listen for master change events. This is the event that is fired when a redis
 master fails over and the designated slave is promoted. The daemon will in turn update the nutcracker 
 configuration file to use the new redis master IP address.
 
 ---
 
-###Build
+### Build
  
 `make`
 
 ---
 
-###Run
+### Run
 ```sh
 ./build/twemproxy_sentinel -h [redis-sentinel-host] -p [redis_sentinel_port] \
   -f [nutcracker_config_file] -c [twemproxy_service_name] [ [-n [sentinel_channel_name] ] \
   [ [-l [syslog_identifier] ]
 ```
 
-###Sample Output
+### Sample Output
 
 ```sh
 [root@Startup-Twemproxy2 twemproxy_sentinel]# ./build/twemproxy_sentinel -h startup-redissentinel -p 26379 -f /root/twemproxy_sentinel/conf/nutcracker.yml -c twemproxy
@@ -72,4 +72,19 @@ twemproxy sentinel listenting to sentinel on channel: SUBSCRIBE +switch-master
 0) subscribe
 1) +switch-master
 2) (null)
+```
+
+### Example Output Of Socket Reconnection
+```
+Mar 28 22:19:59 startup-twemproxy2 twemproxy-sentinel[20288]: 0) subscribe
+Mar 28 22:19:59 startup-twemproxy2 twemproxy-sentinel[20288]: 1) +switch-master
+Mar 28 22:19:59 startup-twemproxy2 twemproxy-sentinel[20288]: 2) (null)
+Mar 28 22:20:23 startup-twemproxy2 twemproxy-sentinel[20288]: Attempting to recconect to redis sentinel with 4 retries remaining
+Mar 28 22:20:45 startup-twemproxy2 twemproxy-sentinel[20288]: Attempting to recconect to redis sentinel with 3 retries remaining
+Mar 28 22:21:06 startup-twemproxy2 twemproxy-sentinel[20288]: Attempting to recconect to redis sentinel with 2 retries remaining
+Mar 28 22:21:28 startup-twemproxy2 twemproxy-sentinel[20288]: Attempting to recconect to redis sentinel with 1 retries remaining
+Mar 28 22:21:28 startup-twemproxy2 twemproxy-sentinel[20288]: Was successfully able to reconnect
+Mar 28 22:21:28 startup-twemproxy2 twemproxy-sentinel[20507]: master (0): 10.132.169.170:6380
+Mar 28 22:21:28 startup-twemproxy2 twemproxy-sentinel[20507]: master (1): 10.132.169.170:6381
+Mar 28 22:21:28 startup-twemproxy2 twemproxy-sentinel[20507]: master (2): 10.132.169.170:6382
 ```

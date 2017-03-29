@@ -11,19 +11,18 @@
 #include "ts_server.h"
 #include "ts_sentinel.h"
 
-
 redisContext* ts_sentinel_connect(ts_server **server) {
   
   struct timeval timeout = { 1, 500000 }; // 1.5 seconds
 
-  redisContext *c;
-  c = redisConnectWithTimeout((*server)->host, (*server)->port, timeout);
+  redis_ctx = redisConnectWithTimeout((*server)->host, (*server)->port, timeout);
 
-  if (c == NULL || c->err) {
+  if (redis_ctx == NULL || redis_ctx->err) {
+    syslog(LOG_CRIT, "Unable to connect to redis sentinel");
     exit(1);
   }
   
-  return c;
+  return redis_ctx;
 }
 
 ts_servers * ts_sentinel_get_masters(redisContext **c) {
@@ -89,6 +88,31 @@ void ts_sentinel_publish_message(redisAsyncContext *c, void *reply, void *privda
   }
 }
 
+void ts_sentinel_disconnect(const redisAsyncContext *c, int status) {
+
+  int retries_remaining = 5;
+
+  int reconnect;
+
+  syslog(LOG_CRIT, "The connection to the sentinel was closed");
+
+  while(retries_remaining-- > 0) {
+    
+    sleep(20);
+    
+    syslog(LOG_CRIT, "Attempting to recconect to redis sentinel with %d retries remaining", retries_remaining);
+     
+    reconnect = redisReconnect(redis_ctx);
+
+    if(reconnect > -1) {
+      syslog(LOG_INFO, "Was successfully able to reconnect");
+      break;
+    }
+  }
+
+  if(retries_remaining < 0) exit(-1);
+}
+
 int ts_sentinel_subscribe(ts_args **tsArgs) {
 
   signal(SIGPIPE, SIG_IGN);
@@ -104,11 +128,13 @@ int ts_sentinel_subscribe(ts_args **tsArgs) {
   char subscribeCmd[72];
   sprintf(subscribeCmd,"SUBSCRIBE %s", (*tsArgs)->nc_channel_name);
   redisAsyncCommand(c, ts_sentinel_publish_message, (*tsArgs), subscribeCmd);
+  redisAsyncSetDisconnectCallback(c, ts_sentinel_disconnect);
   syslog(LOG_INFO, "twemproxy sentinel listenting to sentinel on channel: %s\n", subscribeCmd);
   event_base_dispatch(base);
 
   return 0;
 }
+
 
 ts_master_promotion *ts_master_promotion_init(void) {
   ts_master_promotion *mProm = calloc(1, sizeof(ts_master_promotion));
