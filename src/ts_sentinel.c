@@ -124,6 +124,8 @@ int ts_sentinel_subscribe(ts_args **tsArgs) {
     return 1;
   }
 
+  redisEnableKeepAlive(&c->c);
+
   redisLibeventAttach(c, base);
   char subscribeCmd[72];
   sprintf(subscribeCmd,"SUBSCRIBE %s", (*tsArgs)->nc_channel_name);
